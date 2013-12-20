@@ -4,12 +4,20 @@
 	<meta charset="UTF-8">
 	<title>Kelvin Prototype</title>
 	<style>
+		body{
+			background-color: #333;
+		}
+		
 		canvas {
 			image-rendering: optimize-contrast;
-			image-rendering: optimize-contrast;
-			image-rendering: -webkit-optimize-contrast;
-			image-rendering: optimize-contrast;
-			-ms-interpolation-mode: nearest-neighbor;
+			margin: 0px auto;
+			display: block;
+			background-color: #fff;
+			border: 1px solid black;
+		}
+		
+		#dummy {
+			display: none;
 		}
 	</style>
 	<script src="assets.js"></script>
@@ -17,5 +25,6 @@
 </head>
 <body>
 	<canvas width="800" height="600" id="game"></canvas>
+	<canvas width="800" height="600" id="dummy"></canvas>
 </body>
-	
+</html>
