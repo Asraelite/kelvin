@@ -1,0 +1,19 @@
+FTL version:
+
+In the year 2204 humans a great human scientist discovered a new method of using the Alcubierre drive that allowed
+for efficiency never seen before. A large ship could now travel hundreds of light-years in days rather than only
+small probes with huge engines and fuel tanks that were discarded when used barely reaching the next star system in 10
+years. This led to a revolution in space travel, and the human civilisation quickly expanded because of it.
+
+Humans expanded to new star systems and the few habitable planets that they found were settled upon. Eventually though,
+some colonies seeked to break free from the oppressive Earth States Republic which had strict control over the expansion
+of colonies and heavily taxed everything so that those in power would be wealthy. These colonies were silenced and
+never heard of again, until one of them, after secretly building up a defense army, defeated the wave of Earth States
+Republic ships that had been sent to destroy the colony. This allowed them to get their message out and seek support
+from other colones.
+
+This led to the formation of a Rebellion Fleet that had growing power, but was still far superior to the Earth States
+Republic. The Rebels rely on small Hit and Run attacks to disrupt the Republic. There are also numerous pirate and
+Outer Colony factions who are rarely heard of.
+
+Kelvin takes place during this time in the year 2237 and you can play as a Republican, a Rebel, or a Pirate.

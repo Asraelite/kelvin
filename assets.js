@@ -8,10 +8,15 @@ var assets_to_load = {
 		a3: 'tiles/plank.png',
 		a4: 'tiles/panel.png',
 		a5: 'tiles/cool.png',
-		a6: 'tiles/glass.png'
+		a6: 'tiles/glass.png',
+		a7: 'tiles/grey_wall_tile.png',
+		a8: 'tiles/textured_metal_wall.png'
 	},
 	turrets: {
 		test: 'externals/turrets/cannons/small/test_dock.png'
+	},
+	hulls: {
+		test: 'hulls/shuttle/bow/canary.png'
 	},
 	stars: 'stars.jpg'
 };

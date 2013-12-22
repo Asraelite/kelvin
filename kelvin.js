@@ -9,8 +9,8 @@ var assets = {},
 	
 var view = {
 	x: 0,
-	y: 0,
-	zoom: 16
+	y: -5,
+	zoom: 48
 }
 
 var world = {
@@ -82,8 +82,22 @@ function tileData(data){
 	return {tiles: result, width: w, height: h};
 }
 
-function Ship(){
-	
+function Ship(tier, subclass, name, owner, faction, hull, rooms, roof, mounts, x, y){
+	this.tier = tier || 0;
+	this.type = subclass || 'boat';
+	this.name = name || 'Crag';
+	this.faction = faction || ['SLF', ''];
+	this.build = [createBuild(hull), createBuild(rooms), createBuild(roof)];
+	this.com = getCenterOfMass(this.build);
+	this.mounts = mounts;
+	this.x = x || 0;
+	this.y = y || 0;
+	this.rot = 0;
+	this.rotvel = 0;
+	this.xvel = 0;
+	this.yvel = 0;
+	this.boundaries = [];
+	this.owner = owner || false;
 }
 
 function getDrawData(data){
@@ -96,7 +110,7 @@ function getDrawData(data){
 	}
 	
 	var line = function(x, y, w, h){
-		dummy_ctx.strokeStyle = '#fff';
+		dummy_ctx.strokeStyle = '#000';
 		dummy_ctx.beginPath();
 		dummy_ctx.moveTo(x, y);
 		dummy_ctx.lineTo(x + w, y + h);
@@ -106,24 +120,29 @@ function getDrawData(data){
 	
 	dummy.width = data.width * 16;
 	dummy.height = data.height * 16;
+	dummy.width = 15 * 16;
+	dummy.height = 30 * 16;
 	dummy_ctx.clearRect(0, 0, data.width, data.height);
+	
+	dummy_ctx.drawImage(assets.hulls.test, 0, 0);
 	
 	for(var y in data.tiles){
 		for(var x in data.tiles[y]){
 			var t = data.tiles[y][x];
 			if(tile(x, y)){
+				x = +x;
+				y = +y;
 				dummy_ctx.drawImage(assets.tiles[t.img] || assets.tiles.missing, x * 16, y * 16);
-				if(!tile(+x - 1, +y)) line(x * 16, y * 16, 0, 16);
-				if(!tile(+x, +y - 1)) line(x * 16, y * 16, 16, 0);
-				if(!tile(+x + 1, +y)) line(x * 16 + 16, y * 16, 0, 16);
-				if(!tile(+x, +y + 1)) line(x * 16, y * 16 + 16, 16, 0);
+				if(!tile(x - 1, y)) line(x * 16 - 0.5, y * 16, 0, 16);
+				if(!tile(x, y - 1)) line(x * 16, y * 16 - 0.5, 16, 0);
+				if(!tile(x + 1, y)) line(x * 16 + 16.5, y * 16, 0, 16);
+				if(!tile(x, y + 1)) line(x * 16, y * 16 + 16.5, 16, 0);
 			}
 		}
 	}
 	
-	console.log(tile(-1, 1));
-	
-	var output = {img: new Image(), width: data.width, height: data.height};
+	//var output = {img: new Image(), width: data.width, height: data.height};
+	var output = {img: new Image(), width: 15, height: 30};
 	output.img.src = dummy.toDataURL();
 	draw_cache[JSON.stringify(data).hash()] = output;
 	return output;
@@ -138,14 +157,29 @@ window.onload = function(){
 	
 	loadAssets(assets_to_load, function(){
 		var x = false;
-		ship = [[x,0,6,6,6,6,0,x], 
-				[0,0,4,4,4,4,0,0],
-				[0,4,4,4,4,4,4,0],
-				[6,4,4,4,4,4,4,6],
-				[6,4,4,4,4,4,4,6],
-				[0,4,4,4,4,4,4,0],
-				[0,0,4,4,4,4,0,0],
-				[x,0,0,1,1,0,0,x]
+		ship = [[], 
+				[],
+				[x,x,x,x,x,7,6,6,6,6,7,x],
+				[x,x,x,x,7,7,x,x,x,x,7,7],
+				[x,x,x,x,7,x,x,x,x,x,x,7],
+				[x,x,x,x,6,x,x,x,x,x,x,6],
+				[x,x,x,x,6,x,x,x,x,x,x,6],
+				[x,x,x,x,6,x,x,x,x,x,x,6],
+				[x,x,x,x,6,x,x,x,x,x,x,6],
+				[x,x,x,x,6,x,x,x,x,x,x,6],
+				[x,x,x,x,6,x,x,x,x,x,x,6],
+				[x,x,x,x,7,x,x,x,x,x,x,7],
+				[x,x,x,x,7,7,x,x,x,x,7,7],
+				[x,x,x,x,x,7,7,x,x,7,7,x],
+				[x,x,x,x,x,x,7,x,x,7,x,x],
+				[x,x,x,x,x,x,3,x,x,3,x,x],
+				[x,x,x,x,x,x,3,x,x,3,x,x],
+				[x,x,x,x,x,x,7,x,x,7,x,x],
+				[x,x,x,x,8,8,8,x,x,8,8,8],
+				[x,x,x,x,7,x,x,x,x,x,x,7],
+				[x,x,x,x,7,x,x,x,x,x,x,7],
+				[x,x,x,x,7,7,7,3,3,7,7,7],
+				[x,x,x,x,7,7,x,x,x,x,7,7],
 			   ];
 		ship = tileData(ship);
 		
