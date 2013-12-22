@@ -1,5 +1,5 @@
 /*
-*	Kelvin Prototype version 0.0.2 by Asraelite.
+*	Kelvin Prototype version 0.0.3 by Asraelite.
 *	GNU/GPL License.
 */
 
@@ -8,8 +8,8 @@ var assets = {},
 	rotation = 0
 	
 var view = {
-	x: 10,
-	y: 10,
+	x: 0,
+	y: 0,
 	zoom: 16
 }
 
@@ -70,21 +70,12 @@ function tileData(data){
 	var h = data.length;
 	var result = [];
 	
-	var sidesFor = function(x, y){
-		var sides = [[-1, 0], [0, 1], [1, 0], [0, -1]];
-		for(var i in sides){
-			sides[i] = (data[+y + sides[i][1]] && data[+y + sides[i][1]][+x + sides[i][0]]) == true;
-		}
-		console.log(data[+y + sides[i][1]] ? data[+y + sides[i][1]][+x + sides[i][0]] : '');
-		return sides;
-	}
-	
 	for(var row in data){
 		result.push([]);
 		w = Math.max(w, data[row].length);
 		for(var cell in data[row]){
 			var t = data[row][cell];
-			result[result.length - 1].push(t !== false ? {img: 'a' + t, sides: sidesFor(cell, row)} : false);
+			result[result.length - 1].push(t !== false ? {img: 'a' + t} : false);
 		}
 	}
 	
@@ -101,7 +92,16 @@ function getDrawData(data){
 	if(cache) return cache;
 	
 	var tile = function(x, y){
-		return x < 0 || x >= data.width || y < 0 || y >= data.height ? false : (data.tiles[y] ? data.tiles[y][x] : false);
+		return (x < 0 || x >= data.width || y < 0 || y >= data.height) ? false : (data.tiles[y] ? (data.tiles[y][x] !== false ? true : false) : false);
+	}
+	
+	var line = function(x, y, w, h){
+		dummy_ctx.strokeStyle = '#fff';
+		dummy_ctx.beginPath();
+		dummy_ctx.moveTo(x, y);
+		dummy_ctx.lineTo(x + w, y + h);
+		dummy_ctx.stroke();
+		dummy_ctx.closePath();
 	}
 	
 	dummy.width = data.width * 16;
@@ -110,10 +110,18 @@ function getDrawData(data){
 	
 	for(var y in data.tiles){
 		for(var x in data.tiles[y]){
-			var t = data.tiles[y][x].img;
-			if(tile(x, y)) dummy_ctx.drawImage(assets.tiles[t] || assets.tiles.missing, x * 16, y * 16);
+			var t = data.tiles[y][x];
+			if(tile(x, y)){
+				dummy_ctx.drawImage(assets.tiles[t.img] || assets.tiles.missing, x * 16, y * 16);
+				if(!tile(+x - 1, +y)) line(x * 16, y * 16, 0, 16);
+				if(!tile(+x, +y - 1)) line(x * 16, y * 16, 16, 0);
+				if(!tile(+x + 1, +y)) line(x * 16 + 16, y * 16, 0, 16);
+				if(!tile(+x, +y + 1)) line(x * 16, y * 16 + 16, 16, 0);
+			}
 		}
 	}
+	
+	console.log(tile(-1, 1));
 	
 	var output = {img: new Image(), width: data.width, height: data.height};
 	output.img.src = dummy.toDataURL();
@@ -153,10 +161,8 @@ function tick(){
 }
 
 function drawRotated(img, x, y, width, height, rot){
-	var hx = canvas.width / 2;
-	var hy = canvas.height / 2;
-	//var width = img.width;
-	//var height = img.height;
+	x += (canvas.width / 2) / view.zoom;
+	y += (canvas.height / 2) / view.zoom
 	
 	context.save();
 	context.translate(x, y);
@@ -167,6 +173,8 @@ function drawRotated(img, x, y, width, height, rot){
 
 function print(){
 	context.clearRect(0, 0, canvas.width, canvas.height);
+	context.drawImage(assets.stars, 0, 0);
+	
 	context.save();
 	context.scale(view.zoom, view.zoom);
 	

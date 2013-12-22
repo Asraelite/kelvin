@@ -9,5 +9,9 @@ var assets_to_load = {
 		a4: 'tiles/panel.png',
 		a5: 'tiles/cool.png',
 		a6: 'tiles/glass.png'
-	}
+	},
+	turrets: {
+		test: 'externals/turrets/cannons/small/test_dock.png'
+	},
+	stars: 'stars.jpg'
 };
