@@ -1,5 +1,5 @@
 /*
-*	Kelvin Prototype version 0.0.3 by Asraelite.
+*	Kelvin Prototype version 0.0.4 build 5 by Asraelite.
 *	GNU/GPL License.
 */
 
@@ -9,8 +9,8 @@ var assets = {},
 	
 var view = {
 	x: 0,
-	y: -5,
-	zoom: 48
+	y: 0,
+	zoom: 16
 }
 
 var world = {
@@ -39,6 +39,22 @@ function animate(){
 	requestAnimFrame(animate);
 	tick();
 	print();
+}
+
+function colorHull(img, hue, sat){
+	dummy_ctx.clearRect(0, 0, dummy_ctx.width, dummy_ctx.height);
+	dummy_ctx.width = img.width;
+	dummy_ctx.height = img.height;
+	dummy_ctx.drawImage(img, 0, 0);
+	img = dummy_ctx.getImageData(0, 0, img.width, img.height);
+	var d = img.data;
+	for(var i = 0; i < d.length; i += 4){
+		var o = tinycolor('hsl(' + hue + ', ' + sat + ', ' + tinycolor('rgb(' + d[i] + ', ' + d[i + 1] + ', ' + d[i + 2] + ')').toHsl().l + ')').toRgb();
+		d[i] = o.r;
+		d[i + 1] = o.g;
+		d[i + 2] = o.b;
+	}
+	dummy_ctx.putImageData(img, 0, 0);
 }
 
 function loadAssets(requested, callback){
@@ -120,7 +136,7 @@ function getDrawData(data){
 	
 	dummy.width = data.width * 16;
 	dummy.height = data.height * 16;
-	dummy.width = 15 * 16;
+	dummy.width = 16 * 16;
 	dummy.height = 30 * 16;
 	dummy_ctx.clearRect(0, 0, data.width, data.height);
 	
@@ -144,6 +160,8 @@ function getDrawData(data){
 	//var output = {img: new Image(), width: data.width, height: data.height};
 	var output = {img: new Image(), width: 15, height: 30};
 	output.img.src = dummy.toDataURL();
+	colorHull(output.img, 200, 100);
+	output.img.src = dummy.toDataURL();
 	draw_cache[JSON.stringify(data).hash()] = output;
 	return output;
 }
@@ -159,27 +177,31 @@ window.onload = function(){
 		var x = false;
 		ship = [[], 
 				[],
-				[x,x,x,x,x,7,6,6,6,6,7,x],
-				[x,x,x,x,7,7,x,x,x,x,7,7],
-				[x,x,x,x,7,x,x,x,x,x,x,7],
-				[x,x,x,x,6,x,x,x,x,x,x,6],
-				[x,x,x,x,6,x,x,x,x,x,x,6],
-				[x,x,x,x,6,x,x,x,x,x,x,6],
-				[x,x,x,x,6,x,x,x,x,x,x,6],
-				[x,x,x,x,6,x,x,x,x,x,x,6],
-				[x,x,x,x,6,x,x,x,x,x,x,6],
-				[x,x,x,x,7,x,x,x,x,x,x,7],
-				[x,x,x,x,7,7,x,x,x,x,7,7],
-				[x,x,x,x,x,7,7,x,x,7,7,x],
+				[x,x,x,x,x,x,7,6,6,7,x,x],
 				[x,x,x,x,x,x,7,x,x,7,x,x],
-				[x,x,x,x,x,x,3,x,x,3,x,x],
-				[x,x,x,x,x,x,3,x,x,3,x,x],
 				[x,x,x,x,x,x,7,x,x,7,x,x],
-				[x,x,x,x,8,8,8,x,x,8,8,8],
-				[x,x,x,x,7,x,x,x,x,x,x,7],
-				[x,x,x,x,7,x,x,x,x,x,x,7],
-				[x,x,x,x,7,7,7,3,3,7,7,7],
-				[x,x,x,x,7,7,x,x,x,x,7,7],
+				[x,x,x,8,8,8,8,x,x,8,8,8,8],
+				[x,x,8,8,x,x,x,x,x,x,x,x,8,8],
+				[x,x,6,x,x,x,x,x,x,x,x,x,x,6],
+				[x,x,6,x,x,x,x,x,x,x,x,x,x,6],
+				[x,x,8,8,x,x,x,x,x,x,x,x,8,8],
+				[x,x,x,8,x,x,x,x,x,x,x,x,8,x],
+				[x,x,x,3,x,x,x,x,x,x,x,x,3],
+				[x,x,x,3,x,x,x,x,x,x,x,x,3],
+				[x,x,x,7,x,x,x,x,x,x,x,x,7],
+				[x,x,7,7,x,x,x,x,x,7,7,7,7,7],
+				[x,x,7,x,x,x,x,x,x,7,x,x,x,7],
+				[x,x,6,x,x,x,x,x,x,7,x,x,x,6],
+				[x,x,6,x,x,x,x,x,x,7,x,x,x,6],
+				[x,x,6,x,x,x,x,x,x,7,x,x,x,7],
+				[x,x,7,x,x,x,x,x,x,7,x,x,4,7],
+				[x,x,3,x,x,x,x,x,x,3,x,x,4,7],
+				[x,x,3,x,x,x,x,x,x,7,x,x,4,7],
+				[x,x,7,7,7,7,3,3,7,7,7,7,7,7],
+				[x,x,x,x,x,7,x,x,x,x,7,x,x,x],
+				[x,x,x,x,x,7,x,x,x,x,7,x,x,x],
+				[x,x,x,x,x,7,x,x,x,x,7,x,x,x],
+				[x,x,x,x,x,7,3,3,3,3,7,x,x,x],
 			   ];
 		ship = tileData(ship);
 		

@@ -13,10 +13,9 @@ var assets_to_load = {
 		a8: 'tiles/textured_metal_wall.png'
 	},
 	turrets: {
-		test: 'externals/turrets/cannons/small/test_dock.png'
 	},
 	hulls: {
-		test: 'hulls/shuttle/bow/canary.png'
+		test: 'hulls/shuttle/bow/fox.png'
 	},
 	stars: 'stars.jpg'
 };

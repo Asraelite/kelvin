@@ -21,6 +21,6 @@
 
 var ship_hulls = {
 	shuttle: {
-		bow: 
+		bow: ''
 	}
 }
