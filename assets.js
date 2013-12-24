@@ -15,6 +15,20 @@ var assets_to_load = {
 	turrets: {
 	},
 	hulls: {
+		shuttle: {
+			bow: {
+				canary: {
+					0: 'hulls/shuttle/bow/canary/col1.png',
+					1: 'hulls/shuttle/bow/canary/col2.png'
+				}
+			},
+			stern: {
+				canary: {
+					0: 'hulls/shuttle/stern/canary/col1.png',
+					1: 'hulls/shuttle/stern/canary/col1.png',
+				}
+			}
+		},
 		test: 'hulls/shuttle/bow/fox.png'
 	},
 	stars: 'stars.jpg'

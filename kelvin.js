@@ -1,5 +1,5 @@
 /*
-*	Kelvin Prototype version 0.0.4 build 5 by Asraelite.
+*	Kelvin Prototype version 0.0.7 build 7 by Asraelite.
 *	GNU/GPL License.
 */
 
@@ -14,7 +14,10 @@ var view = {
 }
 
 var world = {
-	ships : {}
+	ships : {},
+	objects: {},
+	cellestials: {},
+	players: {}
 }
 
 window.requestAnimFrame = (function(){
@@ -41,20 +44,64 @@ function animate(){
 	print();
 }
 
-function colorHull(img, hue, sat){
+function colorHull(img, color){
+	// Modified version of Ken Fyrstenberg's code http://stackoverflow.com/questions/20748259/
+	var hsl2rgb = function(h, s, l){
+		var r, g, b, q, p;
+		h /= 360;
+		
+		if(s == 0){
+			r = g = b = l;
+		}else{
+			var hue2rgb = function(p, q, t) {
+				if (t < 0) t++;
+				if (t > 1) t--;
+				if (t < 1 / 6) return p + (q - p) * 6 * t;
+				if (t < 1 / 2) return q;
+				if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+				return p;
+			}
+			
+			q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+			p = 2 * l - q;
+			
+			r = hue2rgb(p, q, h + 1/3);
+			g = hue2rgb(p, q, h);
+			b = hue2rgb(p, q, h - 1/3);
+		}
+		
+		return {
+			r: r * 255,
+			g: g * 255,
+			b: b * 255};
+	}
+		
 	dummy_ctx.clearRect(0, 0, dummy_ctx.width, dummy_ctx.height);
 	dummy_ctx.width = img.width;
 	dummy_ctx.height = img.height;
 	dummy_ctx.drawImage(img, 0, 0);
-	img = dummy_ctx.getImageData(0, 0, img.width, img.height);
-	var d = img.data;
-	for(var i = 0; i < d.length; i += 4){
-		var o = tinycolor('hsl(' + hue + ', ' + sat + ', ' + tinycolor('rgb(' + d[i] + ', ' + d[i + 1] + ', ' + d[i + 2] + ')').toHsl().l + ')').toRgb();
-		d[i] = o.r;
-		d[i + 1] = o.g;
-		d[i + 2] = o.b;
-	}
-	dummy_ctx.putImageData(img, 0, 0);
+	
+	var angle = parseInt(color, 10),
+        idata = dummy_ctx.getImageData(0, 0, img.width, img.height),
+        data = idata.data,
+        len = data.length,
+        i = 0;
+    
+    for(;i < len; i += 4){
+        var lum = data[i] / 255;
+        col = hsl2rgb(angle, 1, lum);
+        
+        data[i] = col.r;
+        data[i+1] = col.g;
+        data[i+2] = col.b;
+    }
+	
+    dummy_ctx.putImageData(idata, 0, 0);
+	// End of his code
+	
+	var result = new Image();
+	result.src = dummy.toDataURL();
+	return result;
 }
 
 function loadAssets(requested, callback){
@@ -98,12 +145,12 @@ function tileData(data){
 	return {tiles: result, width: w, height: h};
 }
 
-function Ship(tier, subclass, name, owner, faction, hull, rooms, roof, mounts, x, y){
+function Ship(tier, subclass, name, owner, faction, hull, rooms, wiring, roof, mounts, x, y){
 	this.tier = tier || 0;
 	this.type = subclass || 'boat';
 	this.name = name || 'Crag';
 	this.faction = faction || ['SLF', ''];
-	this.build = [createBuild(hull), createBuild(rooms), createBuild(roof)];
+	this.build = [hull, rooms, roof];
 	this.com = getCenterOfMass(this.build);
 	this.mounts = mounts;
 	this.x = x || 0;
@@ -114,6 +161,7 @@ function Ship(tier, subclass, name, owner, faction, hull, rooms, roof, mounts, x
 	this.yvel = 0;
 	this.boundaries = [];
 	this.owner = owner || false;
+	this.objects = {};
 }
 
 function getDrawData(data){
@@ -140,7 +188,7 @@ function getDrawData(data){
 	dummy.height = 30 * 16;
 	dummy_ctx.clearRect(0, 0, data.width, data.height);
 	
-	dummy_ctx.drawImage(assets.hulls.test, 0, 0);
+	dummy_ctx.drawImage(colorHull(assets.hulls.test, 380), 0, 0);
 	
 	for(var y in data.tiles){
 		for(var x in data.tiles[y]){
@@ -159,8 +207,6 @@ function getDrawData(data){
 	
 	//var output = {img: new Image(), width: data.width, height: data.height};
 	var output = {img: new Image(), width: 15, height: 30};
-	output.img.src = dummy.toDataURL();
-	colorHull(output.img, 200, 100);
 	output.img.src = dummy.toDataURL();
 	draw_cache[JSON.stringify(data).hash()] = output;
 	return output;
