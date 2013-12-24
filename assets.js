@@ -1,6 +1,7 @@
 var assets_to_load = {
 	tiles: {
 		missing: 'tiles/missing.png',
+		blank: 'tiles/blueprint.png',
 		
 		a0: 'tiles/basic_block.png',
 		a1: 'tiles/cobble.png',
@@ -25,7 +26,11 @@ var assets_to_load = {
 			stern: {
 				canary: {
 					0: 'hulls/shuttle/stern/canary/col1.png',
-					1: 'hulls/shuttle/stern/canary/col1.png',
+					1: 'hulls/shuttle/stern/canary/col2.png',
+				},
+				tug: {
+					0: 'hulls/shuttle/stern/tug/col1.png',
+					1: 'hulls/shuttle/stern/tug/col2.png',
 				}
 			}
 		},

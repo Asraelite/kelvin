@@ -1,7 +1,10 @@
 /*
-*	Kelvin Prototype version 0.0.7 build 7 by Asraelite.
+*	Kelvin Prototype version 0.0.8 build 8 by Asraelite.
 *	GNU/GPL License.
 */
+	
+var	c1 = 125;
+var	c2 = 200;
 
 var assets = {},
 	draw_cache = {},
@@ -128,31 +131,37 @@ function loadAssets(requested, callback){
 	loopSection(assets, requested);
 }
 
-function tileData(data){
-	var w = 0;
-	var h = data.length;
+function blankTileData(tier, parts){
+	var w = tier_data.sizes[tier].width || 0;
+	var h = tier_data.sizes[tier].height || 0;
 	var result = [];
 	
-	for(var row in data){
-		result.push([]);
-		w = Math.max(w, data[row].length);
-		for(var cell in data[row]){
-			var t = data[row][cell];
-			result[result.length - 1].push(t !== false ? {img: 'a' + t} : false);
+	for(var row = 0; row < h; row++){
+		for(var cell = 0; cell < w; cell++){
+			
 		}
 	}
 	
-	return {tiles: result, width: w, height: h};
+	return false;
 }
 
-function Ship(tier, subclass, name, owner, faction, hull, rooms, wiring, roof, mounts, x, y){
-	this.tier = tier || 0;
-	this.type = subclass || 'boat';
+function getCenterOfMass(data){
+	try{
+		return {x: data[0].length / 2, y: data.length / 2}; // Approximation for now, assuming data is a perfect rectangle
+	}catch(e){
+		console.error(e);
+	}
+}
+
+function Ship(tier, name, owner, faction, hull, col1, col2, rooms, wiring, roof, mounts, x, y){
+	this.tier = tier || 'shuttle';
 	this.name = name || 'Crag';
 	this.faction = faction || ['SLF', ''];
-	this.build = [hull, rooms, roof];
-	this.com = getCenterOfMass(this.build);
+	this.build = {hulls: hull, rooms: rooms, roof: roof};
+	this.com = getCenterOfMass(this.build.rooms);
 	this.mounts = mounts;
+	this.col1 = col1;
+	this.col2 = col2;
 	this.x = x || 0;
 	this.y = y || 0;
 	this.rot = 0;
@@ -164,10 +173,40 @@ function Ship(tier, subclass, name, owner, faction, hull, rooms, wiring, roof, m
 	this.objects = {};
 }
 
-function getDrawData(data){
-	if(!(data.tiles && data.width && data.height)) return false;
-	var cache = draw_cache[JSON.stringify(data).hash()];
+function getShipDrawData(ship){
+	if(!(ship instanceof Ship)) return false;
+	var cache = draw_cache[JSON.stringify(ship.build).hash()];
 	if(cache) return cache;
+	
+	dummy.width = tier_data.sizes[ship.tier].width * 16;
+	dummy.height = tier_data.sizes[ship.tier].height * 16;
+	dummy_ctx.clearRect(0, 0, dummy.width, dummy.height);
+	
+	var printFloor = function(floor_data){
+		dummy_ctx.clearRect(0, 0, dummy_ctx.width, dummy_ctx.height);
+		for(var row = 0; row < floor_data.length; row++){
+			for(var col = 0; col < floor_data[row] ? floor_data[row].length : 0; col++){
+				if(floor_data[row][col]) dummy_ctx.drawImage(assets.tiles.blank);
+			}
+		}
+		var result = new Image;
+		result.src = dummy.toDataURL();
+		return result;
+	}
+	
+	// Draw hull, coloured
+	var hull_parts = [];
+	var bld = ship.build.hulls;
+	for(var i in bld){
+		var part = assets.hulls[ship.tier][i][bld[i]]; // Gets e.g. assets.hulls.shuttle.bow.canary
+		hull_parts.push(ship.col1 ? colorHull(part[0], ship.col1) : part[0]);
+		hull_parts.push(ship.col2 ? colorHull(part[1], ship.col2) : part[1]);
+		hull_parts.push(printFloor(ship_hulls[ship.tier][i][bld[i]].floor));
+	}
+	
+	for(var i in hull_parts){
+		dummy_ctx.drawImage(hull_parts[i], 0, 0);
+	}
 	
 	var tile = function(x, y){
 		return (x < 0 || x >= data.width || y < 0 || y >= data.height) ? false : (data.tiles[y] ? (data.tiles[y][x] !== false ? true : false) : false);
@@ -182,18 +221,17 @@ function getDrawData(data){
 		dummy_ctx.closePath();
 	}
 	
-	dummy.width = data.width * 16;
-	dummy.height = data.height * 16;
-	dummy.width = 16 * 16;
-	dummy.height = 30 * 16;
-	dummy_ctx.clearRect(0, 0, data.width, data.height);
+	var hullParts = [colorHull(assets.hulls.shuttle.bow.canary[0], c1),
+					colorHull(assets.hulls.shuttle.bow.canary[1], c2),
+					colorHull(assets.hulls.shuttle.stern.canary[0], c1),
+					colorHull(assets.hulls.shuttle.stern.canary[1], c2)]
 	
-	dummy_ctx.drawImage(colorHull(assets.hulls.test, 380), 0, 0);
+	for(var i in hullParts) dummy_ctx.drawImage(hullParts[i], 0, 0);
 	
 	for(var y in data.tiles){
 		for(var x in data.tiles[y]){
 			var t = data.tiles[y][x];
-			if(tile(x, y)){
+			if(tile(x, y) && false){
 				x = +x;
 				y = +y;
 				dummy_ctx.drawImage(assets.tiles[t.img] || assets.tiles.missing, x * 16, y * 16);
@@ -206,7 +244,7 @@ function getDrawData(data){
 	}
 	
 	//var output = {img: new Image(), width: data.width, height: data.height};
-	var output = {img: new Image(), width: 15, height: 30};
+	var output = {img: new Image(), width: 16, height: 30};
 	output.img.src = dummy.toDataURL();
 	draw_cache[JSON.stringify(data).hash()] = output;
 	return output;
@@ -221,35 +259,7 @@ window.onload = function(){
 	
 	loadAssets(assets_to_load, function(){
 		var x = false;
-		ship = [[], 
-				[],
-				[x,x,x,x,x,x,7,6,6,7,x,x],
-				[x,x,x,x,x,x,7,x,x,7,x,x],
-				[x,x,x,x,x,x,7,x,x,7,x,x],
-				[x,x,x,8,8,8,8,x,x,8,8,8,8],
-				[x,x,8,8,x,x,x,x,x,x,x,x,8,8],
-				[x,x,6,x,x,x,x,x,x,x,x,x,x,6],
-				[x,x,6,x,x,x,x,x,x,x,x,x,x,6],
-				[x,x,8,8,x,x,x,x,x,x,x,x,8,8],
-				[x,x,x,8,x,x,x,x,x,x,x,x,8,x],
-				[x,x,x,3,x,x,x,x,x,x,x,x,3],
-				[x,x,x,3,x,x,x,x,x,x,x,x,3],
-				[x,x,x,7,x,x,x,x,x,x,x,x,7],
-				[x,x,7,7,x,x,x,x,x,7,7,7,7,7],
-				[x,x,7,x,x,x,x,x,x,7,x,x,x,7],
-				[x,x,6,x,x,x,x,x,x,7,x,x,x,6],
-				[x,x,6,x,x,x,x,x,x,7,x,x,x,6],
-				[x,x,6,x,x,x,x,x,x,7,x,x,x,7],
-				[x,x,7,x,x,x,x,x,x,7,x,x,4,7],
-				[x,x,3,x,x,x,x,x,x,3,x,x,4,7],
-				[x,x,3,x,x,x,x,x,x,7,x,x,4,7],
-				[x,x,7,7,7,7,3,3,7,7,7,7,7,7],
-				[x,x,x,x,x,7,x,x,x,x,7,x,x,x],
-				[x,x,x,x,x,7,x,x,x,x,7,x,x,x],
-				[x,x,x,x,x,7,x,x,x,x,7,x,x,x],
-				[x,x,x,x,x,7,3,3,3,3,7,x,x,x],
-			   ];
-		ship = tileData(ship);
+		ship = new Ship('shuttle', 'KPS-1 Canary', false, false, {bow: 'canary', stern: 'canary'}, 0, 0, false, false, false, {}, 0, 0);
 		
 		animate();
 	});
@@ -282,8 +292,8 @@ function print(){
 	
 	rotation += 0.005;
 	
-	var entity = getDrawData(ship);
-	drawRotated(entity.img, view.x, view.y, entity.width, entity.height, rotation);
+	var entity = getShipDrawData(ship);
+	!entity || drawRotated(entity.img, view.x, view.y, entity.width, entity.height, rotation);
 	
 	context.restore();
 }
