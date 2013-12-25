@@ -1,5 +1,5 @@
 /*
-*	Kelvin Prototype version 0.0.8 build 8 by Asraelite.
+*	Kelvin Prototype version 0.0.9 build 9 by Asraelite.
 *	GNU/GPL License.
 */
 	
@@ -13,7 +13,7 @@ var assets = {},
 var view = {
 	x: 0,
 	y: 0,
-	zoom: 16
+	zoom: 1
 }
 
 var world = {
@@ -79,9 +79,9 @@ function colorHull(img, color){
 			b: b * 255};
 	}
 		
-	dummy_ctx.clearRect(0, 0, dummy_ctx.width, dummy_ctx.height);
 	dummy_ctx.width = img.width;
 	dummy_ctx.height = img.height;
+	dummy_ctx.clearRect(0, 0, dummy.width, dummy.height);
 	dummy_ctx.drawImage(img, 0, 0);
 	
 	var angle = parseInt(color, 10),
@@ -149,7 +149,7 @@ function getCenterOfMass(data){
 	try{
 		return {x: data[0].length / 2, y: data.length / 2}; // Approximation for now, assuming data is a perfect rectangle
 	}catch(e){
-		console.error(e);
+		return {x: 0, y: 0}
 	}
 }
 
@@ -175,7 +175,7 @@ function Ship(tier, name, owner, faction, hull, col1, col2, rooms, wiring, roof,
 
 function getShipDrawData(ship){
 	if(!(ship instanceof Ship)) return false;
-	var cache = draw_cache[JSON.stringify(ship.build).hash()];
+	var cache = draw_cache[(JSON.stringify(ship.build) + ':' + ship.col1 + ':' + ship.col2).hash()];
 	if(cache) return cache;
 	
 	dummy.width = tier_data.sizes[ship.tier].width * 16;
@@ -184,32 +184,30 @@ function getShipDrawData(ship){
 	
 	var printFloor = function(floor_data){
 		dummy_ctx.clearRect(0, 0, dummy_ctx.width, dummy_ctx.height);
-		for(var row = 0; row < floor_data.length; row++){
-			for(var col = 0; col < floor_data[row] ? floor_data[row].length : 0; col++){
-				if(floor_data[row][col]) dummy_ctx.drawImage(assets.tiles.blank);
+		for(var y = 2; y < floor_data.length; y++){
+			for(var x = 0; x < floor_data[y].length; x++){
+				if(floor_data[y][x]) dummy_ctx.drawImage(assets.tiles.blank, (x + floor_data[0]) * 16, (y + floor_data[1] - 2) * 16);
 			}
 		}
 		var result = new Image;
 		result.src = dummy.toDataURL();
 		return result;
+		dummy_ctx.clearRect(0, 0, dummy.width, dummy.height);
 	}
 	
 	// Draw hull, coloured
 	var hull_parts = [];
 	var bld = ship.build.hulls;
 	for(var i in bld){
+		hull_parts.push(printFloor(ship_hulls[ship.tier][i][bld[i]].floor));
 		var part = assets.hulls[ship.tier][i][bld[i]]; // Gets e.g. assets.hulls.shuttle.bow.canary
 		hull_parts.push(ship.col1 ? colorHull(part[0], ship.col1) : part[0]);
 		hull_parts.push(ship.col2 ? colorHull(part[1], ship.col2) : part[1]);
-		hull_parts.push(printFloor(ship_hulls[ship.tier][i][bld[i]].floor));
 	}
 	
+	dummy_ctx.clearRect(0, 0, dummy.width, dummy.height);
 	for(var i in hull_parts){
 		dummy_ctx.drawImage(hull_parts[i], 0, 0);
-	}
-	
-	var tile = function(x, y){
-		return (x < 0 || x >= data.width || y < 0 || y >= data.height) ? false : (data.tiles[y] ? (data.tiles[y][x] !== false ? true : false) : false);
 	}
 	
 	var line = function(x, y, w, h){
@@ -221,32 +219,14 @@ function getShipDrawData(ship){
 		dummy_ctx.closePath();
 	}
 	
-	var hullParts = [colorHull(assets.hulls.shuttle.bow.canary[0], c1),
-					colorHull(assets.hulls.shuttle.bow.canary[1], c2),
-					colorHull(assets.hulls.shuttle.stern.canary[0], c1),
-					colorHull(assets.hulls.shuttle.stern.canary[1], c2)]
-	
-	for(var i in hullParts) dummy_ctx.drawImage(hullParts[i], 0, 0);
-	
-	for(var y in data.tiles){
-		for(var x in data.tiles[y]){
-			var t = data.tiles[y][x];
-			if(tile(x, y) && false){
-				x = +x;
-				y = +y;
-				dummy_ctx.drawImage(assets.tiles[t.img] || assets.tiles.missing, x * 16, y * 16);
-				if(!tile(x - 1, y)) line(x * 16 - 0.5, y * 16, 0, 16);
-				if(!tile(x, y - 1)) line(x * 16, y * 16 - 0.5, 16, 0);
-				if(!tile(x + 1, y)) line(x * 16 + 16.5, y * 16, 0, 16);
-				if(!tile(x, y + 1)) line(x * 16, y * 16 + 16.5, 16, 0);
-			}
-		}
+	dummy_ctx.clearRect(0, 0, dummy_ctx.width, dummy_ctx.height);
+	for(var i in hull_parts){
+		dummy_ctx.drawImage(hull_parts[i], 0, 0);
 	}
 	
-	//var output = {img: new Image(), width: data.width, height: data.height};
-	var output = {img: new Image(), width: 16, height: 30};
+	var output = {img: new Image(), width: dummy.width, height: dummy.height};
 	output.img.src = dummy.toDataURL();
-	draw_cache[JSON.stringify(data).hash()] = output;
+	draw_cache[(JSON.stringify(ship.build) + ':' + ship.col1 + ':' + ship.col2).hash()] = output;
 	return output;
 }
 
@@ -259,7 +239,7 @@ window.onload = function(){
 	
 	loadAssets(assets_to_load, function(){
 		var x = false;
-		ship = new Ship('shuttle', 'KPS-1 Canary', false, false, {bow: 'canary', stern: 'canary'}, 0, 0, false, false, false, {}, 0, 0);
+		ship = new Ship('shuttle', 'KPS-1 Canary', false, false, {bow: 'canary', stern: 'canary'}, 1, 150, false, false, false, {}, 0, 0);
 		
 		animate();
 	});
@@ -296,4 +276,9 @@ function print(){
 	!entity || drawRotated(entity.img, view.x, view.y, entity.width, entity.height, rotation);
 	
 	context.restore();
+	
+	if(new Date().getTime() % 3000 < 100){
+		ship.col1 = Math.random() * 360 | 0;
+		ship.col2 = Math.random() * 360 | 0;
+	}
 }
