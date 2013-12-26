@@ -12,7 +12,7 @@
 	
 	Shuttle
 		Bow, Stern
-		16x30
+		16x32
 		2-6 hard points
 		1-2 crew
 	
@@ -37,7 +37,7 @@ var tier_data = {
 		frigate: ['bow', 'port', 'starboard', 'stern']
 	},
 	sizes: {
-		'shuttle': {width: 15, height: 30},
+		'shuttle': {width: 16, height: 30},
 		'corvette': {width: 25, height: 50},
 		'frigate': {width: 35, height: 60},
 		'brig': {},

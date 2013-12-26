@@ -36,5 +36,10 @@ var assets_to_load = {
 		},
 		test: 'hulls/shuttle/bow/fox.png'
 	},
+	body_parts: {
+		human: {
+			test: 'objects/living/human/human1.png'
+		}
+	},
 	stars: 'stars.jpg'
 };

@@ -1,5 +1,5 @@
 /*
-*	Kelvin Prototype version 0.0.9 build 9 by Asraelite.
+*	Kelvin Prototype version 0.0.10 build 10 by Asraelite.
 *	GNU/GPL License.
 */
 	
@@ -20,7 +20,8 @@ var world = {
 	ships : {},
 	objects: {},
 	cellestials: {},
-	players: {}
+	players: {},
+	camera: false
 }
 
 window.requestAnimFrame = (function(){
@@ -47,7 +48,7 @@ function animate(){
 	print();
 }
 
-function colorHull(img, color){
+function colorHull(img, color, lum){
 	// Modified version of Ken Fyrstenberg's code http://stackoverflow.com/questions/20748259/
 	var hsl2rgb = function(h, s, l){
 		var r, g, b, q, p;
@@ -89,10 +90,9 @@ function colorHull(img, color){
         data = idata.data,
         len = data.length,
         i = 0;
-    
+		
     for(;i < len; i += 4){
-        var lum = data[i] / 255;
-        col = hsl2rgb(angle, 1, lum);
+		col = hsl2rgb(angle, 1, (lum ? (data[i] / 255 + (lum * 2)) / 3 : data[i] / 255));
         
         data[i] = col.r;
         data[i+1] = col.g;
@@ -153,15 +153,22 @@ function getCenterOfMass(data){
 	}
 }
 
-function Ship(tier, name, owner, faction, hull, col1, col2, rooms, wiring, roof, mounts, x, y){
+function Entity(name, type, image, parent, x, y, rot, xvel, yvel){
+	this.x = x;
+	this.y = y;
+	this.rotation = rot;
+	this.img = image;
+	this.parent = parent;
+}
+
+function Ship(tier, name, owner, faction, hull, color, rooms, wiring, roof, mounts, x, y){
 	this.tier = tier || 'shuttle';
 	this.name = name || 'Crag';
 	this.faction = faction || ['SLF', ''];
 	this.build = {hulls: hull, rooms: rooms, roof: roof};
 	this.com = getCenterOfMass(this.build.rooms);
 	this.mounts = mounts;
-	this.col1 = col1;
-	this.col2 = col2;
+	this.color = color;
 	this.x = x || 0;
 	this.y = y || 0;
 	this.rot = 0;
@@ -170,12 +177,12 @@ function Ship(tier, name, owner, faction, hull, col1, col2, rooms, wiring, roof,
 	this.yvel = 0;
 	this.boundaries = [];
 	this.owner = owner || false;
-	this.objects = {};
+	this.entities = {};
 }
 
 function getShipDrawData(ship){
 	if(!(ship instanceof Ship)) return false;
-	var cache = draw_cache[(JSON.stringify(ship.build) + ':' + ship.col1 + ':' + ship.col2).hash()];
+	var cache = draw_cache[(JSON.stringify(ship.build) + JSON.stringify(ship.color)).hash()];
 	if(cache) return cache;
 	
 	dummy.width = tier_data.sizes[ship.tier].width * 16;
@@ -201,8 +208,8 @@ function getShipDrawData(ship){
 	for(var i in bld){
 		hull_parts.push(printFloor(ship_hulls[ship.tier][i][bld[i]].floor));
 		var part = assets.hulls[ship.tier][i][bld[i]]; // Gets e.g. assets.hulls.shuttle.bow.canary
-		hull_parts.push(ship.col1 ? colorHull(part[0], ship.col1) : part[0]);
-		hull_parts.push(ship.col2 ? colorHull(part[1], ship.col2) : part[1]);
+		hull_parts.push(ship.color.h1 ? colorHull(part[0], ship.color.h1, ship.color.l1) : part[0]);
+		hull_parts.push(ship.color.h2 ? colorHull(part[1], ship.color.h2, ship.color.l2) : part[1]);
 	}
 	
 	dummy_ctx.clearRect(0, 0, dummy.width, dummy.height);
@@ -224,9 +231,15 @@ function getShipDrawData(ship){
 		dummy_ctx.drawImage(hull_parts[i], 0, 0);
 	}
 	
+	for(var i in world.objects){
+		if(world.objects[i].parent === ship){
+			drawRotated(world.objects[i].img, world.objects[i].x - (dummy.width / 2), world.objects[i].y - (dummy.height / 2), world.objects[i].rotation, dummy);
+		}
+	}
+	
 	var output = {img: new Image(), width: dummy.width, height: dummy.height};
 	output.img.src = dummy.toDataURL();
-	draw_cache[(JSON.stringify(ship.build) + ':' + ship.col1 + ':' + ship.col2).hash()] = output;
+	draw_cache[(JSON.stringify(ship.build) + JSON.stringify(ship.color)).hash()] = output;
 	return output;
 }
 
@@ -239,8 +252,9 @@ window.onload = function(){
 	
 	loadAssets(assets_to_load, function(){
 		var x = false;
-		ship = new Ship('shuttle', 'KPS-1 Canary', false, false, {bow: 'canary', stern: 'canary'}, 1, 150, false, false, false, {}, 0, 0);
-		
+		ship = new Ship('shuttle', 'KPS-1 Canary', false, false, {bow: 'canary', stern: 'tug'}, {h1: 300, l1: 0, h2: 270, l2: 0}, false, false, false, {}, -200, 0);
+		ship2 = new Ship('shuttle', 'KPS-1 Canary', false, false, {bow: 'canary', stern: 'canary'}, {h1: 100, l1: 0, h2: 140, l2: 0}, false, false, false, {}, 200, 0);
+		world.objects.guy = new Entity('', 0, assets.body_parts.human.test, ship, 256, 320, Math.PI, 0, 0);
 		animate();
 	});
 };
@@ -252,15 +266,18 @@ function tick(){
 	var speed = this.delta / (1000 / 60);
 }
 
-function drawRotated(img, x, y, width, height, rot){
-	x += (canvas.width / 2) / view.zoom;
-	y += (canvas.height / 2) / view.zoom
+function drawRotated(img, x, y, rot, can){
+	var can_given = can ? true : false;
+	can = can || canvas;
+	var con = can ? can.getContext('2d') : context;
+	x += can_given ? 0 : (can.width / 2) / view.zoom;
+	y += can_given ? 0 : (can.height / 2) / view.zoom;
 	
-	context.save();
-	context.translate(x, y);
-	context.rotate(rot);
-	context.drawImage(img, -width / 2, -height / 2, width, height);
-	context.restore();
+	con.save();
+	con.translate(x, y);
+	con.rotate(rot);
+	con.drawImage(img, -img.width / 2, -img.height / 2, img.width, img.height);
+	con.restore();
 }
 
 function print(){
@@ -273,12 +290,9 @@ function print(){
 	rotation += 0.005;
 	
 	var entity = getShipDrawData(ship);
-	!entity || drawRotated(entity.img, view.x, view.y, entity.width, entity.height, rotation);
+	!entity || drawRotated(entity.img, view.x + ship.x, view.y + ship.y, rotation);
+	var entity = getShipDrawData(ship2);
+	!entity || drawRotated(entity.img, view.x + ship2.x, view.y + ship.y, rotation);
 	
 	context.restore();
-	
-	if(new Date().getTime() % 3000 < 100){
-		ship.col1 = Math.random() * 360 | 0;
-		ship.col2 = Math.random() * 360 | 0;
-	}
 }
