@@ -16,12 +16,26 @@ var view = {
 	zoom: 1
 }
 
+var game = {
+	login: false,
+	menu: {}
+}
+
+var input = {
+	keys_held: [],
+	keys_pressed: [],
+	mouse_held: [],
+	mouse_pressed: [],
+	keyHeld: function(n){return input.keys_held.indexOf(n) > -1}
+}
+
 var world = {
 	ships : {},
 	objects: {},
 	cellestials: {},
 	players: {},
-	camera: false
+	camera: false,
+	background: false
 }
 
 window.requestAnimFrame = (function(){
@@ -30,6 +44,21 @@ window.requestAnimFrame = (function(){
 		window.setTimeout(callback, 1000 / 60);
 	};
 })();
+
+window.addEventListener('keydown', function(e){
+	key = e.which;
+	if(input.keys_held.indexOf(key) == -1){
+		input.keys_pressed.push(key);
+		input.keys_held.push(key);
+	}
+});
+
+window.addEventListener('keyup', function(e){
+	key = e.which;
+	if(input.keys_held.indexOf(key) > -1){
+		input.keys_held.splice(input.keys_held.indexOf(key), 1);
+	}
+});
 
 String.prototype.hash = function(){ // Thanks to esmiralha for dis.
 	var hash = 0, i, char;
@@ -42,10 +71,39 @@ String.prototype.hash = function(){ // Thanks to esmiralha for dis.
 	return hash;
 }
 
+Math.seedNum = 6;
+
+Math.seed = function(max, min, seed){
+    max = max || 1;
+    min = min || 0;
+	seed = seed || Math.seedNum;
+    Math.seedNum = (seed * 9301 + 49297) % 233280;
+    var rnd = Math.seedNum / 233280;
+	
+    return min + rnd * (max - min);
+}
+
 function animate(){
 	requestAnimFrame(animate);
 	tick();
 	print();
+}
+
+function generateStars(){
+	dummy_ctx.clearRect(0, 0, dummy.width, dummy.height);
+	dummy.width = 1000;
+	dummy.height = 1000;
+	dummy_ctx.fillStyle = '#000';
+	dummy_ctx.fillRect(0, 0, 1000, 1000);
+	dummy_ctx.fillStyle = '#fff';
+	Math.seedNum = 6;
+	for(var i = 0; i < 1000; i++){
+		var size =  Math.seed(0, 1.5);
+		dummy_ctx.fillRect(Math.seed(0, 1000), Math.seed(0, 1000), size, size);
+	}
+	var result = new Image();
+	result.src = dummy.toDataURL();
+	return result;
 }
 
 function colorHull(img, color, lum){
@@ -92,7 +150,8 @@ function colorHull(img, color, lum){
         i = 0;
 		
     for(;i < len; i += 4){
-		col = hsl2rgb(angle, 1, (lum ? (data[i] / 255 + (lum * 2)) / 3 : data[i] / 255));
+		var shine = ((i % img.width) + ((i / img.width) | 0)) % 30 <= 15;
+		col = hsl2rgb(angle, 1, (lum ? (data[i] / 255 + (lum * 2)) / 3 : data[i] / 255) + (shine ? 0.02 : 0));
         
         data[i] = col.r;
         data[i+1] = col.g;
@@ -131,52 +190,49 @@ function loadAssets(requested, callback){
 	loopSection(assets, requested);
 }
 
-function blankTileData(tier, parts){
+function blankTileData(tier, data){
 	var w = tier_data.sizes[tier].width || 0;
 	var h = tier_data.sizes[tier].height || 0;
 	var result = [];
 	
 	for(var row = 0; row < h; row++){
+		result.push([]);
 		for(var cell = 0; cell < w; cell++){
-			
+			result[result.length - 1].push({tile: data[row][cell] > 0 ? 'a' + data[row][cell] : false, rotation: 0});
 		}
 	}
 	
-	return false;
-}
-
-function getCenterOfMass(data){
-	try{
-		return {x: data[0].length / 2, y: data.length / 2}; // Approximation for now, assuming data is a perfect rectangle
-	}catch(e){
-		return {x: 0, y: 0}
-	}
+	return result;
 }
 
 function Entity(name, type, image, parent, x, y, rot, xvel, yvel){
 	this.x = x;
 	this.y = y;
+	this.xvel = 0;
+	this.yvel = 0;
 	this.rotation = rot;
 	this.img = image;
 	this.parent = parent;
 }
 
-function Ship(tier, name, owner, faction, hull, color, rooms, wiring, roof, mounts, x, y){
+function Ship(tier, name, owner, faction, hull, color, floor, rooms, wiring, roof, mounts, x, y){
 	this.tier = tier || 'shuttle';
 	this.name = name || 'Crag';
 	this.faction = faction || ['SLF', ''];
-	this.build = {hulls: hull, rooms: rooms, roof: roof};
-	this.com = getCenterOfMass(this.build.rooms);
+	this.build = {hulls: hull, floor: floor, rooms: rooms, roof: roof};
 	this.mounts = mounts;
 	this.color = color;
 	this.x = x || 0;
 	this.y = y || 0;
-	this.rot = 0;
+	this.width = tier_data.sizes[this.tier].width;
+	this.height = tier_data.sizes[this.tier].height;
+	this.rotation = 0;
 	this.rotvel = 0;
 	this.xvel = 0;
 	this.yvel = 0;
 	this.boundaries = [];
 	this.owner = owner || false;
+	this.com = {x: this.width / 2, y: this.height / 2};
 	this.entities = {};
 }
 
@@ -231,9 +287,13 @@ function getShipDrawData(ship){
 		dummy_ctx.drawImage(hull_parts[i], 0, 0);
 	}
 	
-	for(var i in world.objects){
-		if(world.objects[i].parent === ship){
-			drawRotated(world.objects[i].img, world.objects[i].x - (dummy.width / 2), world.objects[i].y - (dummy.height / 2), world.objects[i].rotation, dummy);
+	for(var row in ship.build.rooms || []){
+		for(var cell in ship.build.rooms[row]){
+			var t = ship.build.rooms[row][cell];
+			if(t && t.tile){
+				console.log(t.tile);
+				dummy_ctx.drawImage(assets.tiles[t.tile], cell * 16, row * 16);
+			}
 		}
 	}
 	
@@ -249,13 +309,19 @@ window.onload = function(){
 	context.webkitImageSmoothingEnabled = false;
 	dummy = document.getElementById('dummy');
 	dummy_ctx = dummy.getContext('2d');
+	world.background = generateStars();
 	
 	loadAssets(assets_to_load, function(){
 		var x = false;
-		ship = new Ship('shuttle', 'KPS-1 Canary', false, false, {bow: 'canary', stern: 'tug'}, {h1: 300, l1: 0, h2: 270, l2: 0}, false, false, false, {}, -200, 0);
-		ship2 = new Ship('shuttle', 'KPS-1 Canary', false, false, {bow: 'canary', stern: 'canary'}, {h1: 100, l1: 0, h2: 140, l2: 0}, false, false, false, {}, 200, 0);
-		world.objects.guy = new Entity('', 0, assets.body_parts.human.test, ship, 256, 320, Math.PI, 0, 0);
+		var test_hull = ['', '', '', '00000777777', '000077000077', '000070000007', '000070000007', '000070000007', 
+						'000070000007', '000070000007', '000070000007', '000070000007', '000070000007', '000077000077', 
+						'00000770077', '0000007007', '0000000000', '0000000000', '0000007007', '000077700777',
+						'000070000007', '000070000007', '000077700777', '000077000077', '', '', '', '', '', ''];
+		world.ships.alpha = new Ship('shuttle', 'KPS-1 Canary', false, false, {bow: 'canary', stern: 'tug'}, {h1: 300, l1: 0, h2: 270, l2: 0}, false, false, false, false, {}, -200, 0);
+		world.ships.beta = new Ship('shuttle', 'KPS-2 Pure Silence', false, false, {bow: 'canary', stern: 'canary'}, {h1: 100, l1: 0, h2: 140, l2: 0}, false, blankTileData('shuttle', test_hull), false, false, {}, 200, 0);
+		world.objects.guy = new Entity('', 0, assets.body_parts.human.test, world.ships.beta, 128, 80, 0, 0, 0);
 		animate();
+		z();
 	});
 };
 
@@ -264,6 +330,45 @@ function tick(){
 	this.now = new Date().getTime();
 	this.delta = this.now - this.last;
 	var speed = this.delta / (1000 / 60);
+	
+	for(var i in world.ships){
+		var s = world.ships[i];
+		s.rotation += s.rotvel;
+		s.x += s.xvel;
+		s.y += s.yvel;
+	}
+	
+	for(var i in world.objects){
+		var o = world.objects[i];
+		o.x += o.xvel;
+		o.y += o.yvel;
+		if(input.keyHeld(83)){
+			o.y += 2;
+			o.rotation = 0;
+		}else if(input.keyHeld(87)){
+			o.y -= 2;
+			o.rotation = Math.PI;
+		}
+		if(input.keyHeld(65)){
+			o.parent.rotvel -= 0.0005;
+		}else if(input.keyHeld(68)){
+			o.parent.rotvel += 0.0005;
+		}
+	}
+	
+	context.clearRect(0, 0, canvas.width, canvas.height);
+	if(view.camera){
+		var o = view.camera;
+		var p = view.camera.parent;
+		var angle = Math.atan2((o.y - 240), (o.x - 128));
+		var dis = Math.sqrt((o.y - 240) * (o.y - 240) + (o.x - 128) * (o.x - 128));
+		var x = Math.cos(angle + p.rotation) * dis;
+		var y = Math.sin(angle + p.rotation) * dis;
+		
+		view.x = -((p.x + x));
+		view.y = -((p.y + y));
+		view.rotation = view.camera.parent ? -view.camera.parent.rotation : (view.camera.rotation || 0);
+	}
 }
 
 function drawRotated(img, x, y, rot, can){
@@ -281,18 +386,44 @@ function drawRotated(img, x, y, rot, can){
 }
 
 function print(){
-	context.clearRect(0, 0, canvas.width, canvas.height);
-	context.drawImage(assets.stars, 0, 0);
-	
 	context.save();
+	
+	if(view.rotation){
+		context.translate(canvas.width / 2, canvas.height / 2);
+		context.rotate(view.rotation);
+		context.translate(-canvas.width / 2, -canvas.height / 2);
+	}
+	
+	!world.background || context.drawImage(world.background, (view.x / 1000) - 200, (view.y / 1000) - 200);
 	context.scale(view.zoom, view.zoom);
 	
-	rotation += 0.005;
+	for(var i in world.ships){
+		var entity = getShipDrawData(world.ships[i]);
+		!entity || drawRotated(entity.img, view.x + world.ships[i].x, view.y + world.ships[i].y, world.ships[i].rotation);
+	}
 	
-	var entity = getShipDrawData(ship);
-	!entity || drawRotated(entity.img, view.x + ship.x, view.y + ship.y, rotation);
-	var entity = getShipDrawData(ship2);
-	!entity || drawRotated(entity.img, view.x + ship2.x, view.y + ship.y, rotation);
+	asdasd
+	for(var i in world.objects){
+		var p = world.objects[i].parent,
+			o = world.objects[i],
+			x = o.x,
+			y = o.y;
+			
+		if(p){
+			var angle = Math.atan2((o.y - 240), (o.x - 128));
+			var dis = Math.sqrt((o.y - 240) * (o.y - 240) + (o.x - 128) * (o.x - 128));
+			var x = p.x - Math.cos(-angle + p.rotation) * dis;
+			var y = p.y - Math.sin(-angle + p.rotation) * dis;
+		}
+		
+		drawRotated(o.img, x + view.x, y + view.y, o.rotation + p.rotation);
+	}
 	
 	context.restore();
+}
+
+function z(){
+	view.camera = world.objects.guy;
+	a = world.objects.guy.rotation;
+	world.objects.guy.parent.rotvel = 0;
 }

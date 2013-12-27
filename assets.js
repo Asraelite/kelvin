@@ -1,8 +1,7 @@
 var assets_to_load = {
 	tiles: {
 		missing: 'tiles/missing.png',
-		blank: 'tiles/blank.png',
-		
+		blank: 'tiles/blank.png',	
 		a0: 'tiles/basic_block.png',
 		a1: 'tiles/cobble.png',
 		a2: 'tiles/metal_tile_1.png',
