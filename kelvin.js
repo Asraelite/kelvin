@@ -402,7 +402,6 @@ function print(){
 		!entity || drawRotated(entity.img, view.x + world.ships[i].x, view.y + world.ships[i].y, world.ships[i].rotation);
 	}
 	
-	asdasd
 	for(var i in world.objects){
 		var p = world.objects[i].parent,
 			o = world.objects[i],
