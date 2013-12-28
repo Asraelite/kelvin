@@ -1,5 +1,5 @@
 /*
-*	Kelvin Prototype version 0.0.11 build 11 by Asraelite.
+*	Kelvin Prototype version 0.0.12 build 12 by Asraelite.
 *	GNU/GPL License.
 */
 	
@@ -316,6 +316,8 @@ function getShipDrawData(ship){
 window.onload = function(){
 	canvas = document.getElementById('game');
 	context = canvas.getContext('2d');
+	canvas.width = window.innerWidth;
+	canvas.height = window.innerHeight;
 	context.webkitImageSmoothingEnabled = false;
 	dummy = document.getElementById('dummy');
 	dummy_ctx = dummy.getContext('2d');
@@ -343,8 +345,8 @@ function tick(){
 	this.now = new Date().getTime();
 	this.delta = this.now - this.last;
 	var speed = this.delta / (1000 / 60);
-	canvas.width = window.innerWidth - 2 | 0;
-	canvas.height = window.innerHeight - 2 | 0;
+	canvas.width = window.innerWidth | 0;
+	canvas.height = window.innerHeight | 0;
 	context.webkitImageSmoothingEnabled = false;
 	
 	for(var i in world.ships){
@@ -357,41 +359,69 @@ function tick(){
 	for(var i in world.objects){
 		var o = world.objects[i],
 			d = o.parent ? o.parent.build.rooms : false,
-			check = function(){
-				var fx = o.x >> 4,
-					fy = o.y >> 4;
-				return (tile(d, fx, fy) || tile(d, fx + 1, fy) || tile(d, fx, fy + 1) || tile(d, fx + 1, fy + 1));
+			check = function(r){
+				r = r || d;
+				var sx = (o.x >> 4) - 1,
+					sy = (o.y >> 4) - 1,
+					fx = ((o.x + 15) >> 4),
+					fy = ((o.y + 15) >> 4);
+				return (tile(r, sx, sy) || tile(r, fx, sy) || tile(r, sx, fy) || tile(r, fx, fy));
 			};
-		
+			
+		if(d && check()){
+			o.x += o.xvel;
+			o.y += o.yvel;
+		}
 		o.x += o.xvel;
-		if(check()){
+		if(d && check()){
 			o.x -= o.xvel;
 			o.xvel = 0;
 		}
 		o.y += o.yvel;
-		if(check()){
+		if(d && check()){
 			o.y -= o.yvel;
 			o.yvel = 0;
 		}
 		
+		var p = o.parent;
+		if(p){
+			// TODO: Implement detection if entity is still on ship floor, if not, delete parent
+		}
+		
+		var rot1 = false,
+			rot2 = false;
+			
 		if(input.keyHeld(83)){
 			o.yvel = 2;
-			o.rotation = 0;
+			rot1 = 0;
 		}else if(input.keyHeld(87)){
 			o.yvel = -2;
-			o.rotation = Math.PI;
+			rot1 = Math.PI;
 		}else{
-			o.yvel = 0;
+			o.yvel *= 0.5;
 		}
 		
 		if(input.keyHeld(65)){
 			o.xvel = -2;
-			o.rotation = Math.PI / 2;
+			rot2 = Math.PI / 2;
 		}else if(input.keyHeld(68)){
 			o.xvel = 2;
-			o.rotation = Math.PI * (3 / 2);
+			rot2 = Math.PI * 1.5;
 		}else{
-			o.xvel = 0;
+			o.xvel *= 0.5;
+		}
+		
+		var x = Math.abs(rot1 - rot2) % 360;
+		if(rot1 !== false && rot2 !== false){
+			if(x >= 0 && x <= Math.PI){
+				o.rotation = ((rot1 + rot2) / 2) % (Math.PI * 2);
+			}else if(x > Math.PI && x < Math.PI * 1.5){
+				o.rotation = (((rot1 + rot2) / 2) % (Math.PI * 2)) + Math.PI;
+			}else{
+				o.rotation = (((rot1 + rot2) / 2) % (Math.PI * 2)) - Math.PI;
+			}
+		}else{
+			if(rot1 !== false || rot2 !== false) o.rotation = Math.max(rot1, rot2);
 		}
 	}
 	
@@ -400,14 +430,18 @@ function tick(){
 	if(view.camera){
 		var o = view.camera;
 		var p = view.camera.parent;
-		var angle = Math.atan2((o.y - 240), (o.x - 128));
-		var dis = Math.sqrt((o.y - 240) * (o.y - 240) + (o.x - 128) * (o.x - 128));
-		var x = Math.cos(angle + p.rotation) * dis;
-		var y = Math.sin(angle + p.rotation) * dis;
-		
-		view.x = -((p.x + x));
-		view.y = -((p.y + y));
-		view.rotation = view.camera.parent ? -view.camera.parent.rotation : (view.camera.rotation || 0);
+		if(p){
+			var angle = Math.atan2((o.y - 240), (o.x - 128));
+			var dis = Math.sqrt((o.y - 240) * (o.y - 240) + (o.x - 128) * (o.x - 128));
+			var x = Math.cos(angle + p.rotation) * dis;
+			var y = Math.sin(angle + p.rotation) * dis;
+			view.x = -((p.x + x));
+			view.y = -((p.y + y));
+		}else{
+			view.x = -o.x;
+			view.y = -o.y;
+		}
+		view.rotation = view.camera.parent ? -view.camera.parent.rotation : 0;
 	}
 }
 
@@ -457,12 +491,13 @@ function print(){
 			var y = p.y - Math.sin(-angle + p.rotation) * dis;
 		}
 		
-		drawRotated(o.img, x + view.x, y + view.y, o.rotation + p.rotation);
+		drawRotated(o.img, x + view.x, y + view.y, o.rotation + (p ? p.rotation : 0));
 	}
 	
 	context.restore();
 	
 	textBox('Kelvin Prototype', canvas.width - 160, canvas.height - 110, 150, 100);
+	textBox((world.objects.guy.x >> 4) + ', ' + (world.objects.guy.y >> 4), 10, canvas.height - 110, 150, 100);
 }
 
 function textBox(text, x, y, w, h){
