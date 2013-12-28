@@ -3,34 +3,11 @@
 <head>
 	<meta charset="UTF-8">
 	<title>Kelvin Prototype</title>
-	<style>
-		@font-face{
-			font-family: Tempesta;
-			src: url(pf_tempesta_seven.ttf);
-		}
-		
-		body{
-			background-color: #333;
-			font-family: Tempesta;
-		}
-		
-		canvas {
-			image-rendering: optimize-contrast;
-			margin: 0px auto;
-			display: block;
-			background-color: #000;
-			border: 1px solid black;
-		}
-		
-		#dummy {
-			display: none;
-			background: url(assets/tiles/blank.png);
-		}
-	</style>
+	<link rel="stylesheet" type="text/css" href="styles.css">
 </head>
 <body>
-	<canvas width="800" height="600" id="game"></canvas>
-	<canvas width="800" height="600" id="dummy"></canvas>
+	<canvas id="game"></canvas>
+	<canvas id="dummy"></canvas>
 </body>
 	<script src="hulls.js"></script>
 	<script src="assets.js"></script>

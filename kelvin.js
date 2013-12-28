@@ -1,5 +1,5 @@
 /*
-*	Kelvin Prototype version 0.0.10 build 10 by Asraelite.
+*	Kelvin Prototype version 0.0.11 build 11 by Asraelite.
 *	GNU/GPL License.
 */
 	
@@ -13,11 +13,12 @@ var assets = {},
 var view = {
 	x: 0,
 	y: 0,
-	zoom: 1
+	zoom: 2
 }
 
 var game = {
 	login: false,
+	loaded: false,
 	menu: {}
 }
 
@@ -35,7 +36,8 @@ var world = {
 	cellestials: {},
 	players: {},
 	camera: false,
-	background: false
+	background: false,
+	star_size: 2000
 }
 
 window.requestAnimFrame = (function(){
@@ -91,15 +93,15 @@ function animate(){
 
 function generateStars(){
 	dummy_ctx.clearRect(0, 0, dummy.width, dummy.height);
-	dummy.width = 1000;
-	dummy.height = 1000;
+	dummy.width = world.star_size;
+	dummy.height = world.star_size;
 	dummy_ctx.fillStyle = '#000';
-	dummy_ctx.fillRect(0, 0, 1000, 1000);
+	dummy_ctx.fillRect(0, 0, world.star_size, world.star_size);
 	dummy_ctx.fillStyle = '#fff';
 	Math.seedNum = 6;
-	for(var i = 0; i < 1000; i++){
+	for(var i = 0; i < world.star_size; i++){
 		var size =  Math.seed(0, 1.5);
-		dummy_ctx.fillRect(Math.seed(0, 1000), Math.seed(0, 1000), size, size);
+		dummy_ctx.fillRect(Math.seed(0, world.star_size), Math.seed(0, world.star_size), size, size);
 	}
 	var result = new Image();
 	result.src = dummy.toDataURL();
@@ -236,6 +238,10 @@ function Ship(tier, name, owner, faction, hull, color, floor, rooms, wiring, roo
 	this.entities = {};
 }
 
+function tile(data, x, y){
+	return data[y] ? (data[y][x] ? data[y][x].tile !== false : false) : false;
+}
+
 function getShipDrawData(ship){
 	if(!(ship instanceof Ship)) return false;
 	var cache = draw_cache[(JSON.stringify(ship.build) + JSON.stringify(ship.color)).hash()];
@@ -287,12 +293,16 @@ function getShipDrawData(ship){
 		dummy_ctx.drawImage(hull_parts[i], 0, 0);
 	}
 	
-	for(var row in ship.build.rooms || []){
-		for(var cell in ship.build.rooms[row]){
-			var t = ship.build.rooms[row][cell];
+	var rms = ship.build.rooms;
+	for(var row in rms || []){
+		for(var cell in rms[row]){
+			var t = rms[row][cell];
 			if(t && t.tile){
-				console.log(t.tile);
 				dummy_ctx.drawImage(assets.tiles[t.tile], cell * 16, row * 16);
+				if(!tile(rms, +cell - 1, row)) line(cell * 16 - 0.5, row * 16, 0, 16);
+				if(!tile(rms, +cell + 1, row)) line(cell * 16 + 16.5, row * 16, 0, 16);
+				if(!tile(rms, cell, +row - 1)) line(cell * 16 + 0.5, row * 16 - 0.5, 15, 0);
+				if(!tile(rms, cell, +row + 1)) line(cell * 16 + 0.5, row * 16 + 16.5, 15, 0);
 			}
 		}
 	}
@@ -311,9 +321,12 @@ window.onload = function(){
 	dummy_ctx = dummy.getContext('2d');
 	world.background = generateStars();
 	
+	textBox('Loading...', 0, 0, canvas.width, canvas.height);
+	
 	loadAssets(assets_to_load, function(){
+		game.loaded = true;
 		var x = false;
-		var test_hull = ['', '', '', '00000777777', '000077000077', '000070000007', '000070000007', '000070000007', 
+		var test_hull = ['', '', '', '00000766667', '000077000077', '000070000007', '000070000007', '000070000007', 
 						'000070000007', '000070000007', '000070000007', '000070000007', '000070000007', '000077000077', 
 						'00000770077', '0000007007', '0000000000', '0000000000', '0000007007', '000077700777',
 						'000070000007', '000070000007', '000077700777', '000077000077', '', '', '', '', '', ''];
@@ -330,6 +343,9 @@ function tick(){
 	this.now = new Date().getTime();
 	this.delta = this.now - this.last;
 	var speed = this.delta / (1000 / 60);
+	canvas.width = window.innerWidth - 2 | 0;
+	canvas.height = window.innerHeight - 2 | 0;
+	context.webkitImageSmoothingEnabled = false;
 	
 	for(var i in world.ships){
 		var s = world.ships[i];
@@ -339,24 +355,48 @@ function tick(){
 	}
 	
 	for(var i in world.objects){
-		var o = world.objects[i];
+		var o = world.objects[i],
+			d = o.parent ? o.parent.build.rooms : false,
+			check = function(){
+				var fx = o.x >> 4,
+					fy = o.y >> 4;
+				return (tile(d, fx, fy) || tile(d, fx + 1, fy) || tile(d, fx, fy + 1) || tile(d, fx + 1, fy + 1));
+			};
+		
 		o.x += o.xvel;
+		if(check()){
+			o.x -= o.xvel;
+			o.xvel = 0;
+		}
 		o.y += o.yvel;
+		if(check()){
+			o.y -= o.yvel;
+			o.yvel = 0;
+		}
+		
 		if(input.keyHeld(83)){
-			o.y += 2;
+			o.yvel = 2;
 			o.rotation = 0;
 		}else if(input.keyHeld(87)){
-			o.y -= 2;
+			o.yvel = -2;
 			o.rotation = Math.PI;
+		}else{
+			o.yvel = 0;
 		}
+		
 		if(input.keyHeld(65)){
-			o.parent.rotvel -= 0.0005;
+			o.xvel = -2;
+			o.rotation = Math.PI / 2;
 		}else if(input.keyHeld(68)){
-			o.parent.rotvel += 0.0005;
+			o.xvel = 2;
+			o.rotation = Math.PI * (3 / 2);
+		}else{
+			o.xvel = 0;
 		}
 	}
 	
 	context.clearRect(0, 0, canvas.width, canvas.height);
+	
 	if(view.camera){
 		var o = view.camera;
 		var p = view.camera.parent;
@@ -394,7 +434,9 @@ function print(){
 		context.translate(-canvas.width / 2, -canvas.height / 2);
 	}
 	
-	!world.background || context.drawImage(world.background, (view.x / 1000) - 200, (view.y / 1000) - 200);
+	var margin_x = (world.star_size - canvas.width) / 2,
+		margin_y = (world.star_size - canvas.height) / 2;
+	!world.background || context.drawImage(world.background, (view.x / world.star_size) - margin_x, (view.y / world.star_size) - margin_y);
 	context.scale(view.zoom, view.zoom);
 	
 	for(var i in world.ships){
@@ -409,7 +451,7 @@ function print(){
 			y = o.y;
 			
 		if(p){
-			var angle = Math.atan2((o.y - 240), (o.x - 128));
+			var angle = Math.atan2((o.y - 240), (-o.x + 128));
 			var dis = Math.sqrt((o.y - 240) * (o.y - 240) + (o.x - 128) * (o.x - 128));
 			var x = p.x - Math.cos(-angle + p.rotation) * dis;
 			var y = p.y - Math.sin(-angle + p.rotation) * dis;
@@ -419,10 +461,24 @@ function print(){
 	}
 	
 	context.restore();
+	
+	textBox('Kelvin Prototype', canvas.width - 160, canvas.height - 110, 150, 100);
+}
+
+function textBox(text, x, y, w, h){
+	context.fillStyle = '#222';
+	context.globalAlpha = 0.5;
+	context.fillRect(x, y, w, h);
+	context.globalAlpha = 1;
+	context.fillStyle = '#fff';
+	context.font = '10pt Pixel'
+	context.textBaseline = 'middle';
+	context.textAlign = 'center';
+	context.fillText(text, x + w / 2, y + h / 2);
 }
 
 function z(){
 	view.camera = world.objects.guy;
 	a = world.objects.guy.rotation;
-	world.objects.guy.parent.rotvel = 0;
+	world.objects.guy.parent.rotvel = 0.01;
 }
