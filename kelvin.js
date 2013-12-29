@@ -1,10 +1,12 @@
 /*
-*	Kelvin Prototype version 0.0.12 build 12 by Asraelite.
-*	GNU/GPL License.
+*	Kelvin by Asraelite ©2013. See below, line 8, for current version.
+*	Github repository: https://github.com/Asraelite/Kelvin .
+*	Standard GNU/GPL License.
 */
 	
 var	c1 = 125;
 var	c2 = 200;
+var version = '0.1.0 build 13'
 
 var assets = {},
 	draw_cache = {},
@@ -17,9 +19,13 @@ var view = {
 }
 
 var game = {
+	loc: 0,
 	login: false,
 	loaded: false,
-	menu: {}
+	menu: {
+		loc: 0,
+		buttons: {}
+	}
 }
 
 var input = {
@@ -27,6 +33,8 @@ var input = {
 	keys_pressed: [],
 	mouse_held: [],
 	mouse_pressed: [],
+	mouse_x: 0,
+	mouse_y: 0,
 	keyHeld: function(n){return input.keys_held.indexOf(n) > -1}
 }
 
@@ -62,6 +70,40 @@ window.addEventListener('keyup', function(e){
 	}
 });
 
+window.addEventListener('mousedown', function(e){
+	key = e.button;
+	if(input.mouse_held.indexOf(key) == -1){
+		input.mouse_pressed.push(key);
+		input.mouse_held.push(key);
+	}
+});
+
+document.oncontextmenu = function(){return false;};
+
+window.addEventListener('mouseup', function(e){
+	key = e.button;
+	if(input.mouse_held.indexOf(key) > -1){
+		input.mouse_held.splice(input.keys_held.indexOf(key), 1);
+	}
+});
+
+window.addEventListener('mousemove', function(e){
+	input.mouse_x = getMouse(e).x;
+	input.mouse_y = getMouse(e).y;
+});
+
+function getMouse(e){
+	if(typeof canvas !== 'undefined'){
+		var rect = canvas.getBoundingClientRect();
+		return {
+			x: e.clientX - rect.left,
+			y: e.clientY - rect.top
+		};
+	}else{
+		return {x: 0, y: 0};
+	}
+}
+
 String.prototype.hash = function(){ // Thanks to esmiralha for dis.
 	var hash = 0, i, char;
 	if (this.length == 0) return hash;
@@ -74,6 +116,7 @@ String.prototype.hash = function(){ // Thanks to esmiralha for dis.
 }
 
 Math.seedNum = 6;
+Math.TAU = Math.PI * 2;
 
 Math.seed = function(max, min, seed){
     max = max || 1;
@@ -87,8 +130,42 @@ Math.seed = function(max, min, seed){
 
 function animate(){
 	requestAnimFrame(animate);
-	tick();
-	print();
+	switch(game.loc){
+		case 0:
+			runMenu();
+			break;
+		case 1:
+			tick();
+			print();
+			break;
+	}
+	input.keys_pressed = [];
+	input.mouse_pressed = [];
+}
+
+function runMenu(){
+	canvas.width = Math.min(Math.max(600, window.innerWidth), 1900);
+	canvas.height = Math.min(Math.max(400, window.innerHeight), 1900);
+	var margin_x = ((world.star_size - canvas.width) / 2) + Math.cos(new Date().getTime() / 5000 % Math.TAU) * 100;
+		margin_y = ((world.star_size - canvas.height) / 2) + Math.sin(new Date().getTime() / 5000 % Math.TAU) * 100;
+	!world.background || context.drawImage(world.background, (view.x / world.star_size) - margin_x, (view.y / world.star_size) - margin_y);
+	
+	var area = game.menu.area = game.menu.area || 0;
+	switch(area){
+		case 0:
+			textBox('Kelvin', canvas.width / 2 - 100, 20, 200, 100, '48px');
+			textBox('', canvas.width - 180, canvas.height - (!isFullScreen() ? 50 : 34), 170, !isFullScreen() ? 40 : 24);
+			if(!isFullScreen()) drawText('Press F11 to go full screen', canvas.width - 95, canvas.height - 46, '#fff', '16px', 'center');
+			drawText('version alpha ' + version, canvas.width - 95, canvas.height - 30, '#fff', '16px', 'center');
+			drawText
+			context.globalAlpha = 0.5;
+			context.drawImage(assets.html5, 5, canvas.height - 55, 50, 50);
+			context.globalAlpha = 1;
+			button('start game', canvas.width / 2 - 50, canvas.height / 2, 100, 25, function(){
+				game.loc = 1;
+			});
+			break;
+	}
 }
 
 function generateStars(){
@@ -168,10 +245,11 @@ function colorHull(img, color, lum){
 	return result;
 }
 
-function loadAssets(requested, callback){
+function loadAssets(requested, callback, increment){
 	to_load = 0;
 	loaded = 0;
 	var assetLoad = function(){
+		increment();
 		if(++loaded >= to_load) callback();
 	}
 	
@@ -323,8 +401,6 @@ window.onload = function(){
 	dummy_ctx = dummy.getContext('2d');
 	world.background = generateStars();
 	
-	textBox('Loading...', 0, 0, canvas.width, canvas.height);
-	
 	loadAssets(assets_to_load, function(){
 		game.loaded = true;
 		var x = false;
@@ -337,6 +413,15 @@ window.onload = function(){
 		world.objects.guy = new Entity('', 0, assets.body_parts.human.test, world.ships.beta, 128, 80, 0, 0, 0);
 		animate();
 		z();
+	}, function(){
+		canvas.width = window.innerWidth;
+		canvas.height = window.innerHeight;
+		context.clearRect(0, 0, canvas.width, canvas.height);
+		textBox('Loading...', 0, 0, canvas.width, canvas.height);
+		context.strokeStyle = '#000';
+		context.fillStyle = '#338';
+		context.fillRect(canvas.width / 2 - 50, canvas.height / 2 + 20, (loaded + 1) / to_load * 100, 10);
+		context.strokeRect(canvas.width / 2 - 50, canvas.height / 2 + 20.5, 100, 10);
 	});
 };
 
@@ -352,6 +437,7 @@ function tick(){
 	for(var i in world.ships){
 		var s = world.ships[i];
 		s.rotation += s.rotvel;
+		s.rotation %= Math.TAU;
 		s.x += s.xvel;
 		s.y += s.yvel;
 	}
@@ -369,17 +455,17 @@ function tick(){
 			};
 			
 		if(d && check()){
-			o.x += o.xvel;
-			o.y += o.yvel;
+			//o.x += o.xvel;
+			//o.y += o.yvel;
 		}
-		o.x += o.xvel;
+		o.x += o.xvel * speed;
 		if(d && check()){
-			o.x -= o.xvel;
+			o.x -= o.xvel * speed;
 			o.xvel = 0;
 		}
-		o.y += o.yvel;
+		o.y += o.yvel * speed;
 		if(d && check()){
-			o.y -= o.yvel;
+			o.y -= o.yvel * speed;
 			o.yvel = 0;
 		}
 		
@@ -414,11 +500,11 @@ function tick(){
 		var x = Math.abs(rot1 - rot2) % 360;
 		if(rot1 !== false && rot2 !== false){
 			if(x >= 0 && x <= Math.PI){
-				o.rotation = ((rot1 + rot2) / 2) % (Math.PI * 2);
+				o.rotation = ((rot1 + rot2) / 2) % Math.TAU;
 			}else if(x > Math.PI && x < Math.PI * 1.5){
-				o.rotation = (((rot1 + rot2) / 2) % (Math.PI * 2)) + Math.PI;
+				o.rotation = (((rot1 + rot2) / 2) % Math.TAU) + Math.PI;
 			}else{
-				o.rotation = (((rot1 + rot2) / 2) % (Math.PI * 2)) - Math.PI;
+				o.rotation = (((rot1 + rot2) / 2) % Math.TAU) - Math.PI;
 			}
 		}else{
 			if(rot1 !== false || rot2 !== false) o.rotation = Math.max(rot1, rot2);
@@ -496,20 +582,49 @@ function print(){
 	
 	context.restore();
 	
-	textBox('Kelvin Prototype', canvas.width - 160, canvas.height - 110, 150, 100);
 	textBox((world.objects.guy.x >> 4) + ', ' + (world.objects.guy.y >> 4), 10, canvas.height - 110, 150, 100);
 }
 
-function textBox(text, x, y, w, h){
+function textBox(text, x, y, w, h, size){
 	context.fillStyle = '#222';
 	context.globalAlpha = 0.5;
 	context.fillRect(x, y, w, h);
 	context.globalAlpha = 1;
-	context.fillStyle = '#fff';
-	context.font = '10pt Pixel'
-	context.textBaseline = 'middle';
-	context.textAlign = 'center';
-	context.fillText(text, x + w / 2, y + h / 2);
+	drawText(text, x + w / 2, y + h / 2, '#fff', size || '16px', 'center', 'middle');
+}
+
+function drawText(text, x, y, color, size, align, base){
+	context.fillStyle = color || '#222';
+	context.font = (size || '16px') + ' Pixel';
+	context.textAlign = align || 'left';
+	context.textBaseline = base || 'top';
+	context.fillText(text, x, y);
+}
+
+function isFullScreen(){
+	return (window.fullScreen) || (window.innerWidth == screen.width && window.innerHeight == screen.height);
+}
+
+function button(text, x, y, w, h, callback){
+	var id = (text + x + ',' + y).hash();
+	if(!game.menu.buttons[id]){
+		game.menu.buttons[id] = 0;
+	}
+	var mouseover = input.mouse_x > x && input.mouse_x < x + w && input.mouse_y > y && input.mouse_y < y + h ? 1 : 0;
+	if(mouseover && input.mouse_pressed.indexOf(0) > -1){
+		game.menu.buttons[id] = 1;
+	}
+	if(input.mouse_held.indexOf(0) == -1){
+		if(game.menu.buttons[id] == 1 && mouseover) callback();
+		game.menu.buttons[id] = 0;
+	}else if(game.menu.buttons[id] == 1){
+		mouseover = 2;
+	}
+	context.fillStyle = ['#444', '#555', '#333'][mouseover];
+	context.fillRect(x, y, w, h);
+	context.fillStyle = ['#333', '#444', '#222'][mouseover];
+	context.fillRect(x + 2, y + 2, w - 4, h - 4);
+	drawText(text, x + w / 2, y + h / 2 + (mouseover == 2 ? 1 : 0), '#fff', '16px', 'center', 'middle');
 }
 
 function z(){

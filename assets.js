@@ -40,5 +40,6 @@ var assets_to_load = {
 			test: 'objects/living/human/human1.png'
 		}
 	},
-	stars: 'stars.jpg'
+	stars: 'stars.jpg',
+	html5: 'html5.png'
 };
