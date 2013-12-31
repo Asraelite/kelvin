@@ -1,3 +1,4 @@
+// Define all image files the game is to load
 var assets_to_load = {
 	tiles: {
 		missing: 'tiles/missing.png',
@@ -35,11 +36,22 @@ var assets_to_load = {
 		},
 		test: 'hulls/shuttle/bow/fox.png'
 	},
+	objects: {
+		control: {
+			helm: {
+				kc_a1: 'objects/control/helm/kc-a1.png'
+			}
+		}
+	},
 	body_parts: {
 		human: {
 			test: 'objects/living/human/human1.png'
 		}
 	},
+	tooltips: {
+		e: 'tooltips/e.png'
+	},
+	sun: 'cellestials/stars/0.png',
 	stars: 'stars.jpg',
 	html5: 'html5.png'
 };

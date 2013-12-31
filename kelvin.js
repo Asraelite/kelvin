@@ -6,7 +6,7 @@
 	
 var	c1 = 125;
 var	c2 = 200;
-var version = '0.1.0 build 13'
+var version = '0.1.1 build 14'
 
 var assets = {},
 	draw_cache = {},
@@ -15,11 +15,11 @@ var assets = {},
 var view = {
 	x: 0,
 	y: 0,
-	zoom: 2
+	zoom: 0.0005
 }
 
 var game = {
-	loc: 0,
+	loc: 1,
 	login: false,
 	loaded: false,
 	menu: {
@@ -108,8 +108,8 @@ String.prototype.hash = function(){ // Thanks to esmiralha for dis.
 	var hash = 0, i, char;
 	if (this.length == 0) return hash;
 	for (i = 0, l = this.length; i < l; i++){
-		char  = this.charCodeAt(i);
-		hash  = ((hash << 5) - hash) + char;
+		char = this.charCodeAt(i);
+		hash = ((hash << 5) - hash) + char;
 		hash |= 0;
 	}
 	return hash;
@@ -146,7 +146,7 @@ function animate(){
 function runMenu(){
 	canvas.width = Math.min(Math.max(600, window.innerWidth), 1900);
 	canvas.height = Math.min(Math.max(400, window.innerHeight), 1900);
-	var margin_x = ((world.star_size - canvas.width) / 2) + Math.cos(new Date().getTime() / 5000 % Math.TAU) * 100;
+	var margin_x = ((world.star_size - canvas.width) / 2) + Math.cos(new Date().getTime() / 5000 % Math.TAU) * 100,
 		margin_y = ((world.star_size - canvas.height) / 2) + Math.sin(new Date().getTime() / 5000 % Math.TAU) * 100;
 	!world.background || context.drawImage(world.background, (view.x / world.star_size) - margin_x, (view.y / world.star_size) - margin_y);
 	
@@ -227,10 +227,11 @@ function colorHull(img, color, lum){
         data = idata.data,
         len = data.length,
         i = 0;
-		
     for(;i < len; i += 4){
-		var shine = ((i % img.width) + ((i / img.width) | 0)) % 30 <= 15;
-		col = hsl2rgb(angle, 1, (lum ? (data[i] / 255 + (lum * 2)) / 3 : data[i] / 255) + (shine ? 0.02 : 0));
+		var shine = ((i % img.width) + ((i / img.width) | 0)) % 30 <= 15,
+			collum = (lum ? (data[i] / 255 + (lum * 2)) / 3 : data[i] / 255),
+			dif = 1 - collum;
+		col = hsl2rgb(angle, 1, (shine ? (1 - (dif / 1.05)): collum));
         
         data[i] = col.r;
         data[i+1] = col.g;
@@ -285,11 +286,13 @@ function blankTileData(tier, data){
 	return result;
 }
 
-function Entity(name, type, image, parent, x, y, rot, xvel, yvel){
+function Entity(name, type, image, parent, x, y, size, rot, xvel, yvel){
 	this.x = x;
 	this.y = y;
 	this.xvel = 0;
 	this.yvel = 0;
+	this.type = type;
+	this.size = size;
 	this.rotation = rot;
 	this.img = image;
 	this.parent = parent;
@@ -333,7 +336,7 @@ function getShipDrawData(ship){
 		dummy_ctx.clearRect(0, 0, dummy_ctx.width, dummy_ctx.height);
 		for(var y = 2; y < floor_data.length; y++){
 			for(var x = 0; x < floor_data[y].length; x++){
-				if(floor_data[y][x]) dummy_ctx.drawImage(assets.tiles.blank, (x + floor_data[0]) * 16, (y + floor_data[1] - 2) * 16);
+				if(floor_data[y][x]) dummy_ctx.drawImage(assets.tiles.a4, (x + floor_data[0]) * 16, (y + floor_data[1] - 2) * 16);
 			}
 		}
 		var result = new Image;
@@ -405,12 +408,14 @@ window.onload = function(){
 		game.loaded = true;
 		var x = false;
 		var test_hull = ['', '', '', '00000766667', '000077000077', '000070000007', '000070000007', '000070000007', 
-						'000070000007', '000070000007', '000070000007', '000070000007', '000070000007', '000077000077', 
-						'00000770077', '0000007007', '0000000000', '0000000000', '0000007007', '000077700777',
-						'000070000007', '000070000007', '000077700777', '000077000077', '', '', '', '', '', ''];
+			'000070000007', '000070000007', '000070000007', '000070000007', '000070000007', '000077000077', '00000700007', '00000700007', 
+			'00000700007', '000077000077', '000070000007', '0007700000077', '0007000000007', '0007000000007', '0007700000077', '000077777777', 
+			'', '', '', '', '', ''];
 		world.ships.alpha = new Ship('shuttle', 'KPS-1 Canary', false, false, {bow: 'canary', stern: 'tug'}, {h1: 300, l1: 0, h2: 270, l2: 0}, false, false, false, false, {}, -200, 0);
-		world.ships.beta = new Ship('shuttle', 'KPS-2 Pure Silence', false, false, {bow: 'canary', stern: 'canary'}, {h1: 100, l1: 0, h2: 140, l2: 0}, false, blankTileData('shuttle', test_hull), false, false, {}, 200, 0);
-		world.objects.guy = new Entity('', 0, assets.body_parts.human.test, world.ships.beta, 128, 80, 0, 0, 0);
+		world.ships.beta = new Ship('shuttle', 'KPS-2 Pure Silence', false, false, {bow: 'canary', stern: 'tug'}, {h1: 100, l1: 0, h2: 140, l2: 0}, false, blankTileData('shuttle', test_hull), false, false, {}, 200, 0);
+		world.objects.control = new Entity('', 2, assets.objects.control.helm.kc_a1, world.ships.beta, 128, 72, 32, 0, 0, 0);
+		world.objects.guy = new Entity('', 0, assets.body_parts.human.test, world.ships.beta, 128, 80, 28, 0, 0, 0);
+		// name, type, image, parent, x, y, size, rot, xvel, yvel
 		animate();
 		z();
 	}, function(){
@@ -447,67 +452,81 @@ function tick(){
 			d = o.parent ? o.parent.build.rooms : false,
 			check = function(r){
 				r = r || d;
-				var sx = (o.x >> 4) - 1,
-					sy = (o.y >> 4) - 1,
-					fx = ((o.x + 15) >> 4),
-					fy = ((o.y + 15) >> 4);
-				return (tile(r, sx, sy) || tile(r, fx, sy) || tile(r, sx, fy) || tile(r, fx, fy));
+				var cover = o.size + 15 >> 4,
+					mul = (o.size / (cover * 16)) * 16;
+				for(var tx = 0; tx <= cover; tx++){
+					for(var ty = 0; ty <= cover; ty++){
+						ket = cover;
+						if(tile(r, ((o.x + tx * mul) - o.size / 2) >> 4, ((o.y + ty * mul) - o.size / 2) >> 4)) return true;
+					}
+				}
+				return false;
 			};
 			
-		if(d && check()){
-			//o.x += o.xvel;
-			//o.y += o.yvel;
-		}
-		o.x += o.xvel * speed;
-		if(d && check()){
-			o.x -= o.xvel * speed;
-			o.xvel = 0;
-		}
-		o.y += o.yvel * speed;
-		if(d && check()){
-			o.y -= o.yvel * speed;
-			o.yvel = 0;
-		}
-		
-		var p = o.parent;
-		if(p){
-			// TODO: Implement detection if entity is still on ship floor, if not, delete parent
-		}
-		
-		var rot1 = false,
-			rot2 = false;
-			
-		if(input.keyHeld(83)){
-			o.yvel = 2;
-			rot1 = 0;
-		}else if(input.keyHeld(87)){
-			o.yvel = -2;
-			rot1 = Math.PI;
-		}else{
-			o.yvel *= 0.5;
-		}
-		
-		if(input.keyHeld(65)){
-			o.xvel = -2;
-			rot2 = Math.PI / 2;
-		}else if(input.keyHeld(68)){
-			o.xvel = 2;
-			rot2 = Math.PI * 1.5;
-		}else{
-			o.xvel *= 0.5;
-		}
-		
-		var x = Math.abs(rot1 - rot2) % 360;
-		if(rot1 !== false && rot2 !== false){
-			if(x >= 0 && x <= Math.PI){
-				o.rotation = ((rot1 + rot2) / 2) % Math.TAU;
-			}else if(x > Math.PI && x < Math.PI * 1.5){
-				o.rotation = (((rot1 + rot2) / 2) % Math.TAU) + Math.PI;
-			}else{
-				o.rotation = (((rot1 + rot2) / 2) % Math.TAU) - Math.PI;
+		if(o.type != 2){
+			if(d && check()){
+				o.x += o.xvel * speed;
+				o.y += o.yvel * speed;
 			}
-		}else{
-			if(rot1 !== false || rot2 !== false) o.rotation = Math.max(rot1, rot2);
+			o.x += o.xvel * speed;
+			if(d && check()){
+				o.x -= o.xvel * speed;
+				o.xvel= 0;
+			}
+			o.y += o.yvel * speed;
+			if(d && check()){
+				o.y -= o.yvel * speed;
+				o.yvel = 0;
+			}
+			
+			var p = o.parent;
+			if(p){
+				// TODO: Implement detection if entity is still on ship floor, if not, delete parent
+			}
+		}else if(o.draw){
+			if(input.mouse_x > o.draw.x - 50 && input.mouse_x < o.draw.x + 50 && input.mouse_y > o.draw.y - 50 && input.mouse_y < o.draw_y + 50){
+				o.hover = true;
+			}else{
+				o.hover = false;
+			}
+		}
+		
+		if(view.camera === o){
+			var rot1 = false,
+				rot2 = false;
+				
+			if(input.keyHeld(83)){
+				o.yvel = 2;
+				rot1 = 0;
+			}else if(input.keyHeld(87)){
+				o.yvel = -2;
+				rot1 = Math.PI;
+			}else{
+				o.yvel *= 0.5;
+			}
+			
+			if(input.keyHeld(65)){
+				o.xvel = -2;
+				rot2 = Math.PI / 2;
+			}else if(input.keyHeld(68)){
+				o.xvel = 2;
+				rot2 = Math.PI * 1.5;
+			}else{
+				o.xvel *= 0.5;
+			}
+			
+			var x = Math.abs(rot1 - rot2) % 360;
+			if(rot1 !== false && rot2 !== false){
+				if(x >= 0 && x <= Math.PI){
+					o.rotation = ((rot1 + rot2) / 2) % Math.TAU;
+				}else if(x > Math.PI && x < Math.PI * 1.5){
+					o.rotation = (((rot1 + rot2) / 2) % Math.TAU) + Math.PI;
+				}else{
+					o.rotation = (((rot1 + rot2) / 2) % Math.TAU) - Math.PI;
+				}
+			}else{
+				if(rot1 !== false || rot2 !== false) o.rotation = Math.max(rot1, rot2);
+			}
 		}
 	}
 	
@@ -554,9 +573,11 @@ function print(){
 		context.translate(-canvas.width / 2, -canvas.height / 2);
 	}
 	
-	var margin_x = (world.star_size - canvas.width) / 2,
-		margin_y = (world.star_size - canvas.height) / 2;
-	!world.background || context.drawImage(world.background, (view.x / world.star_size) - margin_x, (view.y / world.star_size) - margin_y);
+	var size = Math.pow(1.3, Math.log(1 / (view.zoom))),
+		size = world.star_size - (size < 0 ? 0 : size),
+		margin_x = (size - canvas.width) / 2,
+		margin_y = (size - canvas.height) / 2;
+	!world.background || context.drawImage(world.background, (view.x / world.star_size) - margin_x, (view.y / world.star_size) - margin_y, size, size);
 	context.scale(view.zoom, view.zoom);
 	
 	for(var i in world.ships){
@@ -567,22 +588,30 @@ function print(){
 	for(var i in world.objects){
 		var p = world.objects[i].parent,
 			o = world.objects[i],
-			x = o.x,
+			x = o.x;
 			y = o.y;
 			
 		if(p){
-			var angle = Math.atan2((o.y - 240), (-o.x + 128));
-			var dis = Math.sqrt((o.y - 240) * (o.y - 240) + (o.x - 128) * (o.x - 128));
+			var angle = Math.atan2((y - 240), (-x + 128));
+			var dis = Math.sqrt((y - 240) * (y - 240) + (x - 128) * (x - 128));
 			var x = p.x - Math.cos(-angle + p.rotation) * dis;
 			var y = p.y - Math.sin(-angle + p.rotation) * dis;
+			if(o.type == 2) o.draw = {x: (x + view.x) / view.zoom, y: (y + view.y) / view.zoom};
 		}
 		
-		drawRotated(o.img, x + view.x, y + view.y, o.rotation + (p ? p.rotation : 0));
+		if(o.draw && false){
+			var img = outline(o.img);
+		}else{
+			var img = o.img;
+		}
+		drawRotated(img, x + view.x, y + view.y, o.rotation + (p ? p.rotation : 0));
 	}
 	
 	context.restore();
 	
 	textBox((world.objects.guy.x >> 4) + ', ' + (world.objects.guy.y >> 4), 10, canvas.height - 110, 150, 100);
+	
+	view.zoom *= view.zoom < 2 ? 1.02 : 1;
 }
 
 function textBox(text, x, y, w, h, size){
@@ -630,5 +659,5 @@ function button(text, x, y, w, h, callback){
 function z(){
 	view.camera = world.objects.guy;
 	a = world.objects.guy.rotation;
-	world.objects.guy.parent.rotvel = 0.01;
+	world.objects.guy.parent.rotvel = 0.00;
 }
